@@ -42,7 +42,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 
 func dbStats(w http.ResponseWriter, r *http.Request) {
 	for k, v := range db {
-		fmt.Fprintf(w, "id: %v\naddr: %v\n\n", v, k)
+		fmt.Fprintf(w, "id: %v \naddr: %v\n\n", v, k)
 	}
 }
 
