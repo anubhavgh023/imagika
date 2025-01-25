@@ -23,6 +23,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 		db[remoteAddr[0]] = string(id)
 	} else {
 		fmt.Fprintf(w, "User already present with id: %s", string(id))
+		return
 	}
 	reqCount++
 	mu.Unlock()
@@ -40,8 +41,8 @@ func home(w http.ResponseWriter, r *http.Request) {
 }
 
 func dbStats(w http.ResponseWriter, r *http.Request) {
-	for id, addr := range db {
-		fmt.Fprintf(w, "id: %v\naddr: %v\n\n", id, addr)
+	for k, v := range db {
+		fmt.Fprintf(w, "id: %v\naddr: %v\n\n", v, k)
 	}
 }
 
