@@ -36,10 +36,9 @@ func home(w http.ResponseWriter, r *http.Request) {
 		//Responses
 		fmt.Fprintf(w, "Health: OK\n")
 		fmt.Fprintf(w, "In Memory DB -> Entries: %d\n", len(db))
-	} else {
-		fmt.Fprintf(w, "User already present with id: %s", string(id))
-		return
 	}
+	fmt.Fprintf(w, "User already present with id: %s", string(id))
+	return
 }
 
 func dbStats(w http.ResponseWriter, r *http.Request) {
