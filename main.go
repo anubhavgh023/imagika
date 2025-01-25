@@ -10,6 +10,7 @@ import (
 )
 
 const PORT = ":8080"
+const MODE = "dev" // dev || prod
 
 // In-Memery DB
 var db = make(map[string]string) // {remoteAddr : uuid}
@@ -18,11 +19,17 @@ var mu = sync.Mutex{}
 var reqCount int
 
 func home(w http.ResponseWriter, r *http.Request) {
-	id, _ := exec.Command("uuidgen").Output()
-	remoteAddr := strings.Split(r.RemoteAddr, ":")
+	var remoteAddr string
+	if MODE == "dev" {
+		remoteAddr = r.RemoteAddr
+	} else {
+		remoteAddr = strings.Split(r.RemoteAddr, ":")[0]
+	}
+
 	if _, ok := db[r.RemoteAddr]; !ok {
 		mu.Lock()
-		db[remoteAddr[0]] = string(id)
+		id, _ := exec.Command("uuidgen").Output()
+		db[remoteAddr] = string(id)
 		reqCount++
 		mu.Unlock()
 
@@ -36,28 +43,22 @@ func home(w http.ResponseWriter, r *http.Request) {
 		//Responses
 		fmt.Fprintf(w, "Health: OK\n")
 		fmt.Fprintf(w, "In Memory DB -> Entries: %d\n", len(db))
+	} else {
+		fmt.Fprintf(w, "User already present with id: %s", db[remoteAddr])
+		return
 	}
-	fmt.Fprintf(w, "User already present with id: %s", string(id))
-	return
 }
 
 func dbStats(w http.ResponseWriter, r *http.Request) {
 	for k, v := range db {
-		fmt.Fprintf(w, "id: %v\naddr: %v\n\n", v, k)
+		fmt.Fprintf(w, "addr: %v \nid: %v \n\n", k, v)
 	}
-}
-
-func userInfo(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	log.Println("User Info Req for id:", id)
-	fmt.Fprintf(w, "addr: %s\n", db[id])
 }
 
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", home)
 	mux.HandleFunc("GET /dbStats", dbStats)
-	mux.HandleFunc("GET /userInfo/{id}", userInfo)
 
 	log.Printf("Starting server on %v", PORT)
 	err := http.ListenAndServe(PORT, mux)
