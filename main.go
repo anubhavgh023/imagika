@@ -11,38 +11,40 @@ import (
 
 const PORT = ":8080"
 
+// In-Memery DB
 var db = make(map[string]string) // {remoteAddr : uuid}
+
 var mu = sync.Mutex{}
 var reqCount int
 
 func home(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
 	id, _ := exec.Command("uuidgen").Output()
 	remoteAddr := strings.Split(r.RemoteAddr, ":")
 	if _, ok := db[r.RemoteAddr]; !ok {
+		mu.Lock()
 		db[remoteAddr[0]] = string(id)
+		reqCount++
+		mu.Unlock()
+
+		//Logs
+		log.Printf("Request No: %d, In Memory DB Entries: %d\n", reqCount, len(db))
+
+		//Headers
+		w.Header().Add("Server", "Go")
+		w.Header().Add("Set-cookie", string(id))
+
+		//Responses
+		fmt.Fprintf(w, "Health: OK\n")
+		fmt.Fprintf(w, "In Memory DB -> Entries: %d\n", len(db))
 	} else {
 		fmt.Fprintf(w, "User already present with id: %s", string(id))
 		return
 	}
-	reqCount++
-	mu.Unlock()
-
-	//Logs
-	log.Printf("Request No: %d, In Memory DB Entries: %d\n", reqCount, len(db))
-
-	//Headers
-	w.Header().Add("Server", "Go")
-	w.Header().Add("Set-cookie", string(id))
-
-	//Responses
-	fmt.Fprintf(w, "Health: OK\n")
-	fmt.Fprintf(w, "In Memory DB -> Entries: %d\n", len(db))
 }
 
 func dbStats(w http.ResponseWriter, r *http.Request) {
 	for k, v := range db {
-		fmt.Fprintf(w, "id: %v \naddr: %v\n\n", v, k)
+		fmt.Fprintf(w, "id: %v\naddr: %v\n\n", v, k)
 	}
 }
 
