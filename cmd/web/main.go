@@ -48,7 +48,6 @@ func handleImageLoad(w http.ResponseWriter, r *http.Request) {
 
 func handleBatchImageLoad(w http.ResponseWriter, r *http.Request) {
 	// Set Headers
-	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Content-Type", "application/zip")
 	w.(http.Flusher).Flush()
 
