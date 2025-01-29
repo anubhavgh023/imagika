@@ -1,6 +1,7 @@
-const display = document.getElementById("display-container")!;
+import JSZip from "jszip";
 
-const TOTAL_IMAGES = 15
+const display = document.getElementById("display-container")!;
+const container: HTMLElement | null = document.getElementById('container');
 
 // async function loadRandomImages() {
 //     const container = document.getElementById("container")!;
@@ -30,71 +31,46 @@ const TOTAL_IMAGES = 15
 // }
 
 async function loadPreviewImages(): Promise<void> {
-    const container: HTMLElement | null = document.getElementById('container');
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds
-
-
+    //clearing the container
+    if (!container) return;
+    container.innerHTML = '';
     try {
-        const res: Response = await fetch('/api/images/all', { signal: controller.signal });
-        if (!res.ok) {
-            throw new Error(`Response status: ${res.status}`);
-        }
+        const res: Response = await fetch('/api/images/all');
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
-        const reader: ReadableStreamDefaultReader<Uint8Array> | undefined = res.body?.getReader();
-        if (!reader) {
-            throw new Error('Failed to get reader from response body');
-        }
+        // Get the zip files
+        const zipBlob = await res.blob();
 
-        let imagesReceived: number = 0;
+        // Using JSZip to extract images
+        const zip = await JSZip.loadAsync(zipBlob);
 
-        while (imagesReceived < TOTAL_IMAGES) { // Assuming 15 images
-            // Read the image size (4 bytes)
-            const sizeBuffer = await reader.read();
-            console.log("sizeBuffer:", sizeBuffer);
-            if (sizeBuffer.done || !sizeBuffer.value) break;
+        const imagePromises = Object.keys(zip.files).map(async filename => {
+            const file = zip.files[filename];
+            console.log(filename.split("_"));
+            if (!file.dir) {
+                const blob = await file.async("blob");
+                const imgURL = URL.createObjectURL(blob);
 
-
-            // Extract the size from the first 4 bytes
-            const size: number = new DataView(sizeBuffer.value.buffer).getUint32(0, false);
-            console.log("size:", size);
-
-            // Read the image data
-            let imgData: Uint8Array = new Uint8Array(size);
-            console.log("imgData:", imgData);
-            let bytesRead = 0;
-
-            // Issue Here
-            while (bytesRead < size) {
-                const chunk: ReadableStreamReadResult<Uint8Array> = await reader.read();
-                console.log("chunck:", chunk);
-                if (chunk.done || !chunk.value) break;
-
-                // Append the chunk to the image data
-                imgData.set(new Uint8Array(chunk.value), bytesRead);
-                console.log("imgData:", imgData);
-                bytesRead += chunk.value.length;
+                const img = document.createElement("img");
+                img.src = imgURL;
+                img.id = filename.split("_")[1].split(".")[0];
+                img.width = 160;
+                img.height = 90;
+                img.onload = () => URL.revokeObjectURL;
+                return img;
             }
+        })
 
-            if (bytesRead !== size) {
-                throw new Error(`Incomplete image data: expected ${size} bytes, but got ${bytesRead}`);
-            }
+        const images = await Promise.all(imagePromises);
 
-            console.log(imgData);
+        images.forEach(img => {
+            if (img) container?.appendChild(img);
+        })
 
-            // Create an image element and display it
-            const blob: Blob = new Blob([imgData], { type: 'image/png' });
-            console.log("blob:", blob);
-            const imgURL: string = URL.createObjectURL(blob);
-            console.log("imgURL:", imgURL);
-            const img: HTMLImageElement = document.createElement('img');
-            img.src = imgURL;
-            img.width = 160;
-            img.height = 90;
-            container?.appendChild(img);
+        // click on image
+        const imgTags = document.querySelectorAll("#container img");
+        imgTags.forEach(img => img.addEventListener("click", () => loadImage(img)));
 
-            imagesReceived++;
-        }
     } catch (err) {
         console.error('Error loading images:', err);
     }
