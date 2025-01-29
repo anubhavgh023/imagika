@@ -46,7 +46,6 @@ async function loadPreviewImages(): Promise<void> {
 
         const imagePromises = Object.keys(zip.files).map(async filename => {
             const file = zip.files[filename];
-            console.log(filename.split("_"));
             if (!file.dir) {
                 const blob = await file.async("blob");
                 const imgURL = URL.createObjectURL(blob);
