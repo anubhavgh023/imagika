@@ -1,34 +1,51 @@
 // import JSZip from "jszip";
 
 const display = document.getElementById("display-container")!;
-const container: HTMLElement | null = document.getElementById('container');
 
 async function loadPreviewImages() {
-    if (container) {
-        container.innerHTML = '';
+    const container = document.getElementById('container');
+    if (!container) {
+        console.error("Container not found!");
+        return;
     }
+
+    container.innerHTML = '';
+    const promiseBuffer: Promise<void>[] = [];
+    const resolution = "low";
+
     for (let i = 1; i <= 15; i++) {
         const img = document.createElement("img");
         img.id = i.toString();
-        const resolution = "low";
-        try {
-            const res = await fetch(`/api/images/${resolution}/${img.id}`);
-            if (!res.ok) {
-                throw new Error(`Response status: ${res.status}`);
-            }
-
-            const blob = await res.blob()
-            img.src = URL.createObjectURL(blob)
-
-        } catch (err) {
-            console.error(err);
-        }
         img.width = 160;
         img.height = 90;
-        container?.appendChild(img);
+        const fetchPromises = fetch(`/api/images/${resolution}/${img.id}`)
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`Response status: ${res.status}`);
+                }
+                return res.blob();
+
+            }).then(blob => {
+                img.src = URL.createObjectURL(blob)
+                container?.appendChild(img);
+
+            }).catch(err => {
+                console.error(`Error loading image ${img.id}:`, err);
+            });
+        promiseBuffer.push(fetchPromises);
     }
-    const imgTags = document.querySelectorAll("#container img");
-    imgTags.forEach(img => img.addEventListener("click", () => loadImage(img)));
+
+    try {
+        await Promise.all(promiseBuffer);
+
+        // Add event listeners to all images
+        const imgTags = document.querySelectorAll("#container img");
+        imgTags.forEach((img) => {
+            img.addEventListener("click", () => loadImage(img));
+        });
+    } catch (err) {
+        console.error("Error loading images:", err);
+    }
 }
 
 // Zip Implementation:
