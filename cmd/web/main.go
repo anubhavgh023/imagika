@@ -41,9 +41,9 @@ func handleImageLoad(w http.ResponseWriter, r *http.Request) {
 
 	//Logs
 	if SAFE_MODE {
-		log.Printf("Addr: %s, ReqCount: %d, Requested [%s-res img_id: %s]", r.RemoteAddr, reqCount, res, imgID)
-	} else {
 		log.Printf("ReqCount: %d, Requested [%s-res img_id: %s]", reqCount, res, imgID)
+	} else {
+		log.Printf("Addr: %s, ReqCount: %d, Requested [%s-res img_id: %s]", r.RemoteAddr, reqCount, res, imgID)
 	}
 }
 
