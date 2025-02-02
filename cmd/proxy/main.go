@@ -1,13 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"sync"
+	"unsafe"
 )
 
-var cahce map[string][]byte
+var cache = make(map[string][]byte) // {img_id : img_data}
+var mu sync.Mutex
 
 const (
 	PROXY_SERVER_PORT = ":9090"
@@ -15,7 +19,25 @@ const (
 	ORIGIN_SERVER_URL = "http://localhost:8080"
 )
 
+func getCacheMemoryUsage() float64 {
+	mu.Lock()
+	defer mu.Unlock()
+
+	var totalSize int64
+
+	for key, value := range cache {
+		totalSize += int64(len(key)) + int64(unsafe.Sizeof(key))     // Key string size
+		totalSize += int64(len(value)) + int64(unsafe.Sizeof(value)) // Byte slice size
+	}
+	return float64(totalSize) / (1024 * 1024) // Convert to MB
+}
+
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("-------------------------")
+	fmt.Println("CACHE len:", len(cache))
+	fmt.Printf("CACHE Memory Usage: %.2f MB\n", getCacheMemoryUsage())
+	fmt.Println("-------------------------")
+
 	// Step 1: Parse the oring server URL
 	target, err := url.Parse(ORIGIN_SERVER_URL)
 	if err != nil {
@@ -23,11 +45,20 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("Incomming req to proxy:", r.Method, r.URL.Path)
 
+	//[CACHE] Add r.URL.Path to cache if empty
+	if v, ok := cache[r.URL.Path]; ok {
+		// write the v stored in cache to w
+		log.Printf("This response was CACHED: %s\n", r.URL.Path)
+		if _, err := w.Write(v); err != nil {
+			log.Println("ERROR copying resp.Body from:", err)
+		}
+		return
+	}
+
 	// Step 2: Reconstructing the URL for the origin server
 	proxyURL := *r.URL
 	proxyURL.Scheme = target.Scheme
 	proxyURL.Host = target.Host
-	log.Println("Reconstrucuted URL for [ORIGIN_SERVER]:", proxyURL)
 
 	// Step 3: Create a new HTTP req for origin server
 	newReq, err := http.NewRequest(r.Method, proxyURL.String(), r.Body)
@@ -59,6 +90,12 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
+	//[CACHE] reading the body and caching
+	body, err := io.ReadAll(resp.Body)
+	mu.Lock()
+	cache[r.URL.Path] = body
+	mu.Unlock()
+
 	// Step 6: Cody headers from the ORIGIN_SERVER
 	log.Println("Received resp from ORIGIN_SERVER:", resp.Status)
 	for key, values := range resp.Header {
@@ -67,10 +104,10 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Step 7: Copy the resp.Body
-	_, err = io.Copy(w, resp.Body)
-	if err != nil {
-		log.Println("ERROR copying resp.Body:", err)
+	// Step 7: Write body data to w
+	// _, err = io.Copy(w, resp.Body)
+	if _, err := w.Write(body); err != nil {
+		log.Println("ERROR writing to w:", err)
 	}
 }
 

@@ -1,7 +1,3 @@
-// import JSZip from "jszip";
-
-const display = document.getElementById("display-container")!;
-
 async function loadPreviewImages() {
     const container = document.getElementById('container');
     if (!container) {
@@ -12,6 +8,7 @@ async function loadPreviewImages() {
     container.innerHTML = '';
     const promiseBuffer: Promise<void>[] = [];
     const resolution = "low";
+    let totalDataTransfered = 0.0
 
     for (let i = 1; i <= 15; i++) {
         const img = document.createElement("img");
@@ -26,6 +23,7 @@ async function loadPreviewImages() {
                 return res.blob();
 
             }).then(blob => {
+                totalDataTransfered += blob.size
                 img.src = URL.createObjectURL(blob)
                 container?.appendChild(img);
 
@@ -43,76 +41,60 @@ async function loadPreviewImages() {
         imgTags.forEach((img) => {
             img.addEventListener("click", () => loadImage(img));
         });
+
     } catch (err) {
         console.error("Error loading images:", err);
     }
+    // Performance metrics
+    const resources = performance.getEntriesByType("resource");
+    let totalTime = 0;
+    resources.forEach(entry => {
+        totalTime += entry.duration;
+    });
+
+    const avgImgLoadTime = totalTime / resources.length;
+    // Update performance metrics
+    document.getElementById("avgLoadTime")!.textContent = `${avgImgLoadTime.toFixed(3)} ms`;
+    document.getElementById("data-transferred")!.textContent = `${(totalDataTransfered / 1024).toFixed(2)} KB`;
 }
 
-// Zip Implementation:
-// async function ziploadPreviewImages(): Promise<void> {
-//     //clearing the container
-//     if (!container) return;
-//     container.innerHTML = '';
-//     try {
-//         const res: Response = await fetch('/api/images/all');
-//         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-//
-//         // Get the zip files
-//         const zipBlob = await res.blob();
-//
-//         // Using JSZip to extract images
-//         const zip = await JSZip.loadAsync(zipBlob);
-//
-//         const imagePromises = Object.keys(zip.files).map(async filename => {
-//             const file = zip.files[filename];
-//             if (!file.dir) {
-//                 const blob = await file.async("blob");
-//                 const imgURL = URL.createObjectURL(blob);
-//
-//                 const img = document.createElement("img");
-//                 img.src = imgURL;
-//                 img.id = filename.split("_")[1].split(".")[0];
-//                 img.width = 160;
-//                 img.height = 90;
-//                 img.onload = () => URL.revokeObjectURL;
-//                 return img;
-//             }
-//         })
-//
-//         const images = await Promise.all(imagePromises);
-//
-//         images.forEach(img => {
-//             if (img) container?.appendChild(img);
-//         })
-//
-//         // click on image
-//         const imgTags = document.querySelectorAll("#container img");
-//         imgTags.forEach(img => img.addEventListener("click", () => loadImage(img)));
-//
-//     } catch (err) {
-//         console.error('Error loading images:', err);
-//     }
-// }
 
 async function loadImage(imgElement: Element) {
     const displayImg = document.createElement("img");
     const resolution = "high";
     displayImg.width = 1280;
     displayImg.height = 720;
+    let hiResImgDataTrans = 0.0;
     try {
         const res = await fetch(`/api/images/${resolution}/${imgElement.id}`);
         if (!res.ok) {
             throw new Error(`Response status: ${res.status}`);
         }
         const blob = await res.blob()
+        hiResImgDataTrans = blob.size;
         displayImg.src = URL.createObjectURL(blob)
     } catch (err) {
         console.error(err);
     }
     display.innerHTML = '';
     display.appendChild(displayImg);
+
+    // Performance metrics
+    const resources = performance.getEntriesByType("resource");
+    let loadTime = 0;
+    resources.forEach(entry => {
+        loadTime = entry.duration;
+    });
+
+    // Update performance metrics
+    document.getElementById("hiRes-imgLoadTime")!.textContent = `${loadTime.toFixed(3)} ms`;
+    document.getElementById("data-transferred")!.textContent = `${(hiResImgDataTrans / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 
+const display = document.getElementById("display-container")!;
 const btn = document.getElementById("btn")!;
 btn.addEventListener("click", loadPreviewImages);
+
+
+export { loadImage, loadPreviewImages }

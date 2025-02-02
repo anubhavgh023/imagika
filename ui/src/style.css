@@ -10,6 +10,7 @@ body {
     min-width: 320px;
     min-height: 100vh;
     font-family: Arial, sans-serif;
+    position: relative;
 }
 
 /* Top container to center its content */
@@ -17,21 +18,34 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 20px;
-    /* Space between button and display container */
+    margin-top: 24px;
+    width: 100%;
+    max-width: 1400px;
+    padding: 20px;
 }
 
-/* Display container styling */
-#display-container {
-    border: 1px solid #444;
-    border-radius: 8px;
-    padding: 20px;
-    width: 1280px;
-    height: 720px;
+/* Stat Box */
+.perf-container {
+    position: fixed;
+    top: 4px;
+    left: 4px;
+    padding: 8px;
     background: #1a1a1a;
-    /*overflow: auto;*/
-    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.6);
+    border-radius: 2px;
+    border: 1px solid #414141;
+    text-align: left;
+}
+
+/* Pre-formatted text for metrics */
+.perf-container pre {
+    margin: 0;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: whitesmoke;
+    font-size: 14px;
 }
 
 /* Button styling */
@@ -51,26 +65,18 @@ body {
     opacity: 0.8;
 }
 
-/* Button container alignment */
-#container {
+/* Image grid container */
+.image-grid {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-}
-
-/* Container styling */
-#container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 4px;
-    /* Space between images */
+    gap: 10px;
+    width: 100%;
 }
 
 /* Image styling */
-#container img {
+.image-grid img {
     padding: 2px;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     border-radius: 6px;
@@ -78,9 +84,21 @@ body {
 }
 
 /* Hover effect for images */
-#container img:hover {
+.image-grid img:hover {
     transform: translateY(-2px) scale(1.1);
-    /* Raise and scale the image */
     box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.2);
-    /* Add a shadow for effect */
+}
+
+/* Display container styling */
+.display {
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 20px;
+    width: 1280px;
+    height: 720px;
+    background: #1a1a1a;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
