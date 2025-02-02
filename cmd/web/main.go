@@ -10,6 +10,7 @@ import (
 
 const PORT = ":8080"
 const TOTAL_IMAGES = 15
+const SAFE_MODE = true
 
 var reqCount int
 
@@ -39,7 +40,11 @@ func handleImageLoad(w http.ResponseWriter, r *http.Request) {
 	w.Write(buf)
 
 	//Logs
-	log.Printf("Addr: %s, ReqCount: %d, Requested [%s-res img_id: %s]", r.RemoteAddr, reqCount, res, imgID)
+	if SAFE_MODE {
+		log.Printf("Addr: %s, ReqCount: %d, Requested [%s-res img_id: %s]", r.RemoteAddr, reqCount, res, imgID)
+	} else {
+		log.Printf("ReqCount: %d, Requested [%s-res img_id: %s]", reqCount, res, imgID)
+	}
 }
 
 func main() {
