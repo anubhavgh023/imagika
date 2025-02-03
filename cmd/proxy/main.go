@@ -10,13 +10,15 @@ import (
 	"unsafe"
 )
 
-var cache = make(map[string][]byte) // {img_id : img_data}
+// var cache = make(map[string][]byte) // {img_id : img_data}
+var cache = NewLRUCache(20)
+
 var mu sync.Mutex
 
 const (
 	PROXY_SERVER_PORT = ":9090"
-	ORIGIN_SERVER_URL = "http://185.18.221.19:8080"
-	// ORIGIN_SERVER_URL = "http://localhost:8080"
+	// ORIGIN_SERVER_URL = "http://185.18.221.19:8080"
+	ORIGIN_SERVER_URL = "http://localhost:8080"
 )
 
 func getCacheMemoryUsage() float64 {
@@ -25,16 +27,16 @@ func getCacheMemoryUsage() float64 {
 
 	var totalSize int64
 
-	for key, value := range cache {
-		totalSize += int64(len(key)) + int64(unsafe.Sizeof(key))     // Key string size
-		totalSize += int64(len(value)) + int64(unsafe.Sizeof(value)) // Byte slice size
+	for key, value := range cache.cacheMap {
+		totalSize += int64(len(key)) + int64(unsafe.Sizeof(key))           // Key string size
+		totalSize += int64(len(value.value)) + int64(unsafe.Sizeof(value)) // Byte slice size
 	}
 	return float64(totalSize) / (1024 * 1024) // Convert to MB
 }
 
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("-------------------------")
-	fmt.Println("CACHE len:", len(cache))
+	fmt.Println("CACHE len:", len(cache.cacheMap))
 	fmt.Printf("CACHE Memory Usage: %.2f MB\n", getCacheMemoryUsage())
 	fmt.Println("-------------------------")
 
@@ -46,7 +48,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Incomming req to proxy:", r.Method, r.URL.Path)
 
 	//[CACHE] Add r.URL.Path to cache if empty
-	if v, ok := cache[r.URL.Path]; ok {
+	if v, ok := cache.Get(r.URL.Path); ok {
 		// write the v stored in cache to w
 		log.Printf("This response was CACHED: %s\n", r.URL.Path)
 		if _, err := w.Write(v); err != nil {
@@ -93,7 +95,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	//[CACHE] reading the body and caching
 	body, err := io.ReadAll(resp.Body)
 	mu.Lock()
-	cache[r.URL.Path] = body
+	cache.Put(r.URL.Path, body)
 	mu.Unlock()
 
 	// Step 6: Cody headers from the ORIGIN_SERVER
