@@ -45,11 +45,13 @@ func NewLRUCache(capacity int) *LRUCache {
 
 // Move the accessed node to the front (most recently used position)
 func (lru *LRUCache) Get(key string) ([]byte, bool) {
+	mu.Lock()
 	if node, ok := lru.cacheMap[key]; ok {
 		lru.removeNode(node)
 		lru.addNode(node)
 		return node.value, true
 	}
+	mu.Unlock()
 	return nil, false
 }
 

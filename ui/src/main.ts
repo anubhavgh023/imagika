@@ -1,3 +1,5 @@
+const TOTAL_IMAGES = 28
+
 async function loadPreviewImages() {
     const container = document.getElementById('container');
     if (!container) {
@@ -10,7 +12,7 @@ async function loadPreviewImages() {
     const resolution = "low";
     let totalDataTransfered = 0.0
 
-    for (let i = 1; i <= 15; i++) {
+    for (let i = 1; i <= TOTAL_IMAGES; i++) {
         const img = document.createElement("img");
         img.id = i.toString();
         img.width = 160;
@@ -49,11 +51,14 @@ async function loadPreviewImages() {
     const resources = performance.getEntriesByType("resource");
     let totalTime = 0;
     resources.forEach(entry => {
-        totalTime += entry.duration;
+        if (entry.name.includes("/api/images")) {
+            totalTime += entry.duration;
+        }
     });
 
     const avgImgLoadTime = totalTime / resources.length;
     // Update performance metrics
+    document.getElementById("totImgLoaded")!.textContent = `${resources.length}`
     document.getElementById("avgLoadTime")!.textContent = `${avgImgLoadTime.toFixed(3)} ms`;
     document.getElementById("data-transferred")!.textContent = `${(totalDataTransfered / 1024).toFixed(2)} KB`;
 }

@@ -9,7 +9,7 @@ import (
 )
 
 const PORT = ":8080"
-const TOTAL_IMAGES = 15
+const TOTAL_IMAGES = 28
 const SAFE_MODE = true
 
 var reqCount int
@@ -48,15 +48,16 @@ func handleImageLoad(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fs := http.FileServer(http.Dir("ui/dist"))
-	http.Handle("/", fs)
+	mux := http.NewServeMux()
 
-	// http.HandleFunc("/api/images/all", handleImageLoad)
-	http.HandleFunc("/api/images/{res}/{id}", handleImageLoad)
-	http.HandleFunc("/api/health", healthCheck)
+	fs := http.FileServer(http.Dir("ui/dist"))
+	mux.Handle("/", fs)
+
+	mux.HandleFunc("/api/images/{res}/{id}", handleImageLoad)
+	mux.HandleFunc("/api/health", healthCheck)
 
 	log.Println("Stating server at PORT", PORT)
-	err := http.ListenAndServe(PORT, nil)
+	err := http.ListenAndServe(PORT, mux)
 	if err != nil {
 		log.Fatal(err)
 	}
