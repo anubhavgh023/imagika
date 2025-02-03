@@ -21,7 +21,8 @@ var reqCount int
 // var ORIGIN_SERVER_URL = os.Getenv("REMOTE_HOST_ADDR")
 const (
 	PROXY_SERVER_PORT = ":9090"
-	ORIGIN_SERVER_URL = "http://localhost:8080"
+	// ORIGIN_SERVER_URL = "http://localhost:8080"
+	ORIGIN_SERVER_URL = "http://185.18.221.19:8080"
 )
 
 // Rate limiter
