@@ -8,6 +8,7 @@ async function loadPreviewImages() {
     }
 
     container.innerHTML = '';
+    performance.clearResourceTimings()
     const promiseBuffer: Promise<void>[] = [];
     const resolution = "low";
     let totalDataTransfered = 0.0
@@ -69,6 +70,7 @@ async function loadImage(imgElement: Element) {
     const resolution = "high";
     displayImg.width = 1280;
     displayImg.height = 720;
+    performance.clearResourceTimings()
     let hiResImgDataTrans = 0.0;
     try {
         const res = await fetch(`/api/images/${resolution}/${imgElement.id}`);
@@ -85,6 +87,7 @@ async function loadImage(imgElement: Element) {
     display.appendChild(displayImg);
 
     // Performance metrics
+
     const resources = performance.getEntriesByType("resource");
     let loadTime = 0;
     resources.forEach(entry => {

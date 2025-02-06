@@ -1,96 +1,94 @@
+// PROXY SERVEr
+
 package main
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"sync"
-	"unsafe"
 
 	"golang.org/x/time/rate"
 )
 
 // var cache = make(map[string][]byte) // {img_id : img_data}
-var cache = NewLRUCache(10) // LRU Cache
-var mu sync.Mutex
+var cache = NewLRUCache(30) // LRU Cache
+var mu sync.RWMutex
 var reqCount int
 
 // var ORIGIN_SERVER_URL = os.Getenv("REMOTE_HOST_ADDR")
 const (
 	PROXY_SERVER_PORT = ":9090"
-	// ORIGIN_SERVER_URL = "http://localhost:8080"
-	ORIGIN_SERVER_URL = "http://185.18.221.19:8080"
+	ORIGIN_SERVER_URL = "http://localhost:8080"
+	// ORIGIN_SERVER_URL = "http://185.18.221.19:8080"
 )
 
-// Rate limiter
-func rateLimiter(next func(w http.ResponseWriter, r *http.Request)) http.Handler {
-	var (
-		mu      sync.Mutex
-		clients = make(map[string]*rate.Limiter)
-	)
+// Rate limiter Middleware
+var clients = make(map[string]*rate.Limiter)
 
+func rateLimiter(next func(w http.ResponseWriter, r *http.Request)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Extract client't IP addr
 		ip, _, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
 			log.Println("ERROR rateLimiter:", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
 		mu.Lock()
 		if _, ok := clients[ip]; !ok {
-			clients[ip] = rate.NewLimiter(30, 60)
-			fmt.Println(clients[ip])
-		}
-
-		if !clients[ip].Allow() {
-			mu.Unlock()
-			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
-			return
+			clients[ip] = rate.NewLimiter(10, 30) // (r = rate ,b = tokens)
 		}
 		mu.Unlock()
+
+		if !clients[ip].Allow() {
+			log.Println("[RATE LIMITED]: Too Many Requests", http.StatusTooManyRequests)
+			return
+		}
 		next(w, r)
 	})
 }
 
-func getCacheMemoryUsage() float64 {
-	var totalSize int64
+// func getCacheMemoryUsage() float64 {
+// 	var totalSize int64
+//
+// 	for key, value := range cache.cacheMap {
+// 		totalSize += int64(len(key)) + int64(unsafe.Sizeof(key))           // Key string size
+// 		totalSize += int64(len(value.value)) + int64(unsafe.Sizeof(value)) // Byte slice size
+// 	}
+// 	return float64(totalSize) / (1024 * 1024) // Convert to MB
+// }
 
-	for key, value := range cache.cacheMap {
-		totalSize += int64(len(key)) + int64(unsafe.Sizeof(key))           // Key string size
-		totalSize += int64(len(value.value)) + int64(unsafe.Sizeof(value)) // Byte slice size
-	}
-	return float64(totalSize) / (1024 * 1024) // Convert to MB
-}
-
+// var sem = make(chan struct{}, 10)
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	reqCount++
-	fmt.Println("-------------------------")
-	fmt.Println("CACHE len:", len(cache.cacheMap))
-	fmt.Printf("CACHE Memory Usage: %.2f MB\n", getCacheMemoryUsage())
-	fmt.Println("-------------------------")
-	mu.Unlock()
+	// sem <- struct{}{} // Acquire a slot
+	// defer func() { <-sem }() // Release the slot
 
 	// Step 1: Parse the oring server URL
 	target, err := url.Parse(ORIGIN_SERVER_URL)
 	if err != nil {
 		log.Fatal("ERROR in parsing ORIGIN_SERVER_URL")
 	}
-	log.Printf("Req Count: %d, Incomming req to proxy:%v %v", reqCount, r.Method, r.URL.Path)
+	log.Printf("ReqCount: %d, CacheLen: %d, Incomming req to proxy: %v", reqCount, len(cache.cacheMap), r.URL.Path)
 
 	//[CACHE] Add r.URL.Path to cache if empty
+	// Using readers-writer lock:
+	// The readers–writer lock allows multiple concurrent goroutines
+	// to execute the read-only critical section part.
+	mu.RLock()
 	if v, ok := cache.Get(r.URL.Path); ok {
 		// write the v stored in cache to w
-		log.Printf("This response was CACHED: %s\n", r.URL.Path)
+		mu.RUnlock()
+		log.Printf("[CACHED] Response: %s\n", r.URL.Path)
 		if _, err := w.Write(v); err != nil {
 			log.Println("ERROR copying resp.Body from:", err)
 		}
 		return
 	}
+	mu.RUnlock()
 
 	// Step 2: Reconstructing the URL for the origin server
 	proxyURL := *r.URL
@@ -150,6 +148,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.Handle("/", rateLimiter(proxyHandler))
+	// http.HandleFunc("/", proxyHandler)
 	log.Println("Starting [PROXY SERVER] on", PROXY_SERVER_PORT)
 	if err := http.ListenAndServe(PROXY_SERVER_PORT, nil); err != nil {
 		log.Fatal("ListenAndServe:", err)

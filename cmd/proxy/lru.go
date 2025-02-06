@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 )
 
 // Node -> (key : value)
@@ -15,6 +16,7 @@ type Node struct {
 type LRUCache struct {
 	capacity int
 	cacheMap map[string]*Node
+	mu       sync.Mutex
 	head     *Node
 	tail     *Node
 }
@@ -45,18 +47,21 @@ func NewLRUCache(capacity int) *LRUCache {
 
 // Move the accessed node to the front (most recently used position)
 func (lru *LRUCache) Get(key string) ([]byte, bool) {
-	mu.Lock()
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
 	if node, ok := lru.cacheMap[key]; ok {
 		lru.removeNode(node)
 		lru.addNode(node)
 		return node.value, true
 	}
-	mu.Unlock()
 	return nil, false
 }
 
 // Put (key,value) pair in cache
 func (lru *LRUCache) Put(key string, value []byte) {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
+
 	// Check if the key already exists in the cache
 	if node, ok := lru.cacheMap[key]; ok {
 		lru.removeNode(node)

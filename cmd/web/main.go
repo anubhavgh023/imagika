@@ -20,8 +20,6 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleImageLoad(w http.ResponseWriter, r *http.Request) {
-	reqCount++
-
 	// URL path values
 	imgID := r.PathValue("id")
 	res := r.PathValue("res")
