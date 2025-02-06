@@ -52,21 +52,7 @@ func rateLimiter(next func(w http.ResponseWriter, r *http.Request)) http.Handler
 	})
 }
 
-// func getCacheMemoryUsage() float64 {
-// 	var totalSize int64
-//
-// 	for key, value := range cache.cacheMap {
-// 		totalSize += int64(len(key)) + int64(unsafe.Sizeof(key))           // Key string size
-// 		totalSize += int64(len(value.value)) + int64(unsafe.Sizeof(value)) // Byte slice size
-// 	}
-// 	return float64(totalSize) / (1024 * 1024) // Convert to MB
-// }
-
-// var sem = make(chan struct{}, 10)
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
-	// sem <- struct{}{} // Acquire a slot
-	// defer func() { <-sem }() // Release the slot
-
 	// Step 1: Parse the oring server URL
 	target, err := url.Parse(ORIGIN_SERVER_URL)
 	if err != nil {

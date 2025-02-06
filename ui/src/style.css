@@ -106,3 +106,14 @@ body {
     justify-content: center;
     align-items: center;
 }
+
+.title {
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    background: none;
+    padding: 8px;
+    position: absolute;
+    top: 2px;
+    right: 10px;
+}
